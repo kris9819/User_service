@@ -3,8 +3,8 @@ package com.user_service.DTOs;
 import lombok.Data;
 
 @Data
-public class ConfirmRegisterDto {
+public class SignInUserDto {
 
-    String code;
     String email;
+    String password;
 }

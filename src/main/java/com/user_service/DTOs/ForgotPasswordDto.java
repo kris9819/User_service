@@ -3,8 +3,6 @@ package com.user_service.DTOs;
 import lombok.Data;
 
 @Data
-public class LoginUserDto {
-
+public class ForgotPasswordDto {
     String email;
-    String password;
 }
