@@ -16,13 +16,13 @@ public class UserAuthenticationController {
     private UserAuthenticationService userAuthenticationService;
 
     @PostMapping(value = "/register")
-    public ResponseEntity<String> signUpUser(@RequestBody RegisterUserDto registerUserDto) {
-        SignUpResponseDto signUpResponseDto = userAuthenticationService.signUpUser(registerUserDto);
+    public ResponseEntity<String> signUpUser(@RequestBody SignUpUserDto signUpUserDto) {
+        SignUpResponseDto signUpResponseDto = userAuthenticationService.signUpUser(signUpUserDto);
 
         if (signUpResponseDto.getSignUpResponse() == null) {
-            return new ResponseEntity<String>(signUpResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(signUpResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<String>("Account sign up, confirmation code sent to " + registerUserDto.getEmail(), HttpStatus.OK);
+        return new ResponseEntity<>("Account sign up, confirmation code sent to " + signUpUserDto.getEmail(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/confirm")
@@ -36,7 +36,47 @@ public class UserAuthenticationController {
     }
 
     @PostMapping(value = "/login")
-    public void signInUser(@RequestBody LoginUserDto loginUserDto) {
-        userAuthenticationService.signInUser(loginUserDto);
+    public ResponseEntity<String> signInUser(@RequestBody SignInUserDto signInUserDto) {
+        SignInResponseDto signInResponseDto = userAuthenticationService.signInUser(signInUserDto);
+
+        if (signInResponseDto.getAdminInitiateAuthResponse() == null) {
+            return new ResponseEntity<>(signInResponseDto.getMesssage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>("Login successful", HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/changePassword")
+    public ResponseEntity<String> changePassword(@RequestBody ChangePasswordDto changePasswordDto) {
+        ChangePasswordResponseDto changePasswordResponseDto = userAuthenticationService.changePassword(changePasswordDto);
+
+        if (changePasswordResponseDto.getChangePasswordResponse() == null) {
+            return new ResponseEntity<>(changePasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>("Password changed", HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/forgotPassword")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordDto forgotPasswordDto) {
+        ForgotPasswordResponseDto forgotPasswordResponseDto = userAuthenticationService.forgotPassword(forgotPasswordDto);
+
+        if (forgotPasswordResponseDto.getForgotPasswordResponse() == null) {
+            return new ResponseEntity<>(forgotPasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>("Forgot password validation code send on email", HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/confirmForgotPassword")
+    public ResponseEntity<String> confirmForgotPassword(@RequestBody ConfirmForgotPasswordDto confirmForgotPasswordDto) {
+        ConfirmForgotPasswordResponseDto confirmForgotPasswordResponseDto = userAuthenticationService.confirmForgotPassword(confirmForgotPasswordDto);
+
+        if (confirmForgotPasswordResponseDto.getConfirmForgotPasswordResponse() == null) {
+            return new ResponseEntity<>(confirmForgotPasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>("Password reseted", HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/authorize")
+    public void authorize(@RequestBody AuthorizeDto authorizeDto) {
+        userAuthenticationService.authorize(authorizeDto);
     }
 }
