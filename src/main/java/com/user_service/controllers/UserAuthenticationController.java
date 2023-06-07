@@ -1,7 +1,9 @@
 package com.user_service.controllers;
 
-import com.user_service.DTOs.*;
+import com.user_service.dtos.request.*;
+import com.user_service.dtos.response.*;
 import com.user_service.services.UserAuthenticationService;
+import com.user_service.services.UserAuthorizationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,42 +17,29 @@ public class UserAuthenticationController {
 
     private UserAuthenticationService userAuthenticationService;
 
+    private UserAuthorizationService userAuthorizationService;
+
     @PostMapping(value = "/register")
-    public ResponseEntity<String> signUpUser(@RequestBody SignUpUserDto signUpUserDto) {
-        SignUpResponseDto signUpResponseDto = userAuthenticationService.signUpUser(signUpUserDto);
-
-        if (signUpResponseDto.getSignUpResponse() == null) {
-            return new ResponseEntity<>(signUpResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Account sign up, confirmation code sent to " + signUpUserDto.getEmail(), HttpStatus.OK);
-    }
-
-    @PostMapping(value = "/confirm")
-    public ResponseEntity<String> confirmSignUp(@RequestBody ConfirmRegisterDto confirmRegisterDto) {
-        ConfirmSignUpResponseDto confirmSignUpResponseDto = userAuthenticationService.confirmSignUp(confirmRegisterDto);
-
-        if (confirmSignUpResponseDto.getConfirmSignUpResponse() == null) {
-            return new ResponseEntity<>(confirmSignUpResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Account confirmed successfully", HttpStatus.OK);
+    public ResponseEntity<SignUpResponseDto> signUpUser(@RequestBody SignUpUserDto signUpUserDto) {
+        return new ResponseEntity<>(userAuthenticationService.signUpUser(signUpUserDto), HttpStatus.OK);
     }
 
     @PostMapping(value = "/login")
-    public ResponseEntity<String> signInUser(@RequestBody SignInUserDto signInUserDto) {
-        SignInResponseDto signInResponseDto = userAuthenticationService.signInUser(signInUserDto);
+    public ResponseEntity<SignInResponseDto> signInUser(@RequestBody SignInUserDto signInUserDto) {
+        return new ResponseEntity<>(userAuthenticationService.signInUser(signInUserDto), HttpStatus.OK);
+    }
 
-        if (signInResponseDto.getAdminInitiateAuthResponse() == null) {
-            return new ResponseEntity<>(signInResponseDto.getMesssage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Login successful", HttpStatus.OK);
+    @PostMapping(value = "/confirm")
+    public ResponseEntity<ConfirmSignUpResponseDto> confirmSignUp(@RequestBody ConfirmSignUpDto confirmSignUpDto) {
+        return new ResponseEntity<>(userAuthenticationService.confirmSignUp(confirmSignUpDto), HttpStatus.OK);
     }
 
     @PostMapping(value = "/changePassword")
     public ResponseEntity<String> changePassword(@RequestBody ChangePasswordDto changePasswordDto) {
         ChangePasswordResponseDto changePasswordResponseDto = userAuthenticationService.changePassword(changePasswordDto);
 
-        if (changePasswordResponseDto.getChangePasswordResponse() == null) {
-            return new ResponseEntity<>(changePasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        if (changePasswordResponseDto.changePasswordResponse() == null) {
+            return new ResponseEntity<>(changePasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>("Password changed", HttpStatus.OK);
     }
@@ -59,8 +48,8 @@ public class UserAuthenticationController {
     public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordDto forgotPasswordDto) {
         ForgotPasswordResponseDto forgotPasswordResponseDto = userAuthenticationService.forgotPassword(forgotPasswordDto);
 
-        if (forgotPasswordResponseDto.getForgotPasswordResponse() == null) {
-            return new ResponseEntity<>(forgotPasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        if (forgotPasswordResponseDto.forgotPasswordResponse() == null) {
+            return new ResponseEntity<>(forgotPasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>("Forgot password validation code send on email", HttpStatus.OK);
     }
@@ -69,14 +58,14 @@ public class UserAuthenticationController {
     public ResponseEntity<String> confirmForgotPassword(@RequestBody ConfirmForgotPasswordDto confirmForgotPasswordDto) {
         ConfirmForgotPasswordResponseDto confirmForgotPasswordResponseDto = userAuthenticationService.confirmForgotPassword(confirmForgotPasswordDto);
 
-        if (confirmForgotPasswordResponseDto.getConfirmForgotPasswordResponse() == null) {
-            return new ResponseEntity<>(confirmForgotPasswordResponseDto.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        if (confirmForgotPasswordResponseDto.confirmForgotPasswordResponse() == null) {
+            return new ResponseEntity<>(confirmForgotPasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
         return new ResponseEntity<>("Password reseted", HttpStatus.OK);
     }
 
-    @PostMapping(value = "/authorize")
-    public void authorize(@RequestBody AuthorizeDto authorizeDto) {
-        userAuthenticationService.authorize(authorizeDto);
-    }
+//    @PostMapping(value = "/authorize")
+//    public void authorize(@RequestBody AuthorizeDto authorizeDto) {
+//        userAuthorizationService.authorize(authorizeDto);
+//    }
 }

@@ -1,28 +1,45 @@
 package com.user_service.services;
 
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTVerifier;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.RSAKeyProvider;
-import com.user_service.DTOs.*;
-import com.user_service.utility.AwsCognitoRSAKeyProvider;
+import com.user_service.dtos.request.ChangePasswordDto;
+import com.user_service.dtos.request.ConfirmForgotPasswordDto;
+import com.user_service.dtos.request.ConfirmSignUpDto;
+import com.user_service.dtos.request.ForgotPasswordDto;
+import com.user_service.dtos.request.SignInUserDto;
+import com.user_service.dtos.request.SignUpUserDto;
+import com.user_service.dtos.response.ChangePasswordResponseDto;
+import com.user_service.dtos.response.ConfirmForgotPasswordResponseDto;
+import com.user_service.dtos.response.ConfirmSignUpResponseDto;
+import com.user_service.dtos.response.ForgotPasswordResponseDto;
+import com.user_service.dtos.response.SignInResponseDto;
+import com.user_service.dtos.response.SignUpResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.services.cognitoidentity.CognitoIdentityClient;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
-import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AdminInitiateAuthRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AttributeType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthFlowType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.AuthenticationResultType;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ChangePasswordRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.CognitoIdentityProviderException;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmForgotPasswordRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmSignUpRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ConfirmSignUpResponse;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.ForgotPasswordRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.SignUpRequest;
+import software.amazon.awssdk.services.cognitoidentityprovider.model.SignUpResponse;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @AllArgsConstructor
 public class UserAuthenticationService {
-
-    private CognitoIdentityClient cognitoIdentityClient;
 
     private CognitoIdentityProviderClient cognitoIdentityProviderClient;
 
@@ -32,17 +49,17 @@ public class UserAuthenticationService {
     public SignUpResponseDto signUpUser(SignUpUserDto signUpUserDto) {
         AttributeType attributeType = AttributeType.builder()
                 .name("email")
-                .value(signUpUserDto.getEmail())
+                .value(signUpUserDto.email())
                 .build();
 
         AttributeType attributeType1 = AttributeType.builder()
                 .name("name")
-                .value(signUpUserDto.getName())
+                .value(signUpUserDto.name())
                 .build();
 
         AttributeType attributeType2 = AttributeType.builder()
                 .name("birthdate")
-                .value(signUpUserDto.getBirthdate().toString())
+                .value(signUpUserDto.birthdate().toString())
                 .build();
 
         List<AttributeType> attrs = new ArrayList<>();
@@ -52,24 +69,32 @@ public class UserAuthenticationService {
         try {
             SignUpRequest signUpRequest = SignUpRequest.builder()
                     .userAttributes(attrs)
-                    .username(signUpUserDto.getEmail())
+                    .username(signUpUserDto.email())
                     .clientId(CLIENT_ID)
-                    .password(signUpUserDto.getPassword())
+                    .password(signUpUserDto.password())
                     .build();
 
-            log.info("New user with email: {} created", signUpUserDto.getEmail());
-            return new SignUpResponseDto(cognitoIdentityProviderClient.signUp(signUpRequest), null);
+            Optional<SignUpResponse> response = Optional.ofNullable(cognitoIdentityProviderClient.signUp(signUpRequest));
+
+            if (response.isPresent()) {
+                log.info("New user with email: {} created", signUpUserDto.email());
+                return new SignUpResponseDto(response.get().codeDeliveryDetails().destination(),
+                        response.get().codeDeliveryDetails().deliveryMediumAsString(),
+                        response.get().userSub());
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred");
         } catch (CognitoIdentityProviderException e) {
             log.error("Failed to sign up user, error: {}", e.awsErrorDetails().errorMessage());
-            return new SignUpResponseDto(null, e.awsErrorDetails().errorMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.awsErrorDetails().errorMessage());
         }
     }
 
     public SignInResponseDto signInUser(SignInUserDto signInUserDto) {
         try {
+
             Map<String, String> authParams = new LinkedHashMap<>() {{
-                put("USERNAME", signInUserDto.getEmail());
-                put("PASSWORD", signInUserDto.getPassword());
+                put("USERNAME", signInUserDto.email());
+                put("PASSWORD", signInUserDto.password());
             }};
 
             AdminInitiateAuthRequest authRequest = AdminInitiateAuthRequest.builder()
@@ -79,42 +104,54 @@ public class UserAuthenticationService {
                     .authFlow(AuthFlowType.ADMIN_USER_PASSWORD_AUTH)
                     .build();
 
-            log.info("User {} signed in", signInUserDto.getEmail());
-            return new SignInResponseDto(cognitoIdentityProviderClient.adminInitiateAuth(authRequest), null);
+            Optional<AuthenticationResultType> response = Optional.ofNullable(cognitoIdentityProviderClient.adminInitiateAuth(authRequest).authenticationResult());
+
+            if (response.isPresent()) {
+                log.info("User {} signed in", signInUserDto.email());
+                return new SignInResponseDto(response.get().accessToken(),
+                        response.get().tokenType(),
+                        response.get().refreshToken(),
+                        response.get().idToken(),
+                        response.get().expiresIn());
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred");
         } catch (CognitoIdentityProviderException e) {
             log.error("Failed to sign in user, error: {}", e.awsErrorDetails().errorMessage());
-            return new SignInResponseDto(null, e.awsErrorDetails().errorMessage());
-        } finally {
-            cognitoIdentityClient.close();
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.awsErrorDetails().errorMessage());
         }
     }
 
-    public ConfirmSignUpResponseDto confirmSignUp(ConfirmRegisterDto confirmRegisterDto) {
+    public ConfirmSignUpResponseDto confirmSignUp(ConfirmSignUpDto confirmSignUpDto) {
         try {
             ConfirmSignUpRequest signUpRequest = ConfirmSignUpRequest.builder()
                     .clientId(CLIENT_ID)
-                    .confirmationCode(confirmRegisterDto.getCode())
-                    .username(confirmRegisterDto.getEmail())
+                    .confirmationCode(confirmSignUpDto.code())
+                    .username(confirmSignUpDto.email())
                     .build();
 
-            log.info("User {} sign up confirmed", confirmRegisterDto.getEmail());
-            return new ConfirmSignUpResponseDto(cognitoIdentityProviderClient.confirmSignUp(signUpRequest), confirmRegisterDto.getEmail() + " was confirmed");
+            log.info("User {} sign up confirmed", confirmSignUpDto.email());
+
+            Optional<ConfirmSignUpResponse> response = Optional.ofNullable(cognitoIdentityProviderClient.confirmSignUp(signUpRequest));
+            if (response.isPresent()) {
+                return new ConfirmSignUpResponseDto("CONFIRMED");
+            }
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred");
         } catch (CognitoIdentityProviderException e) {
-            log.error("Failed to confirm user sign up, error: {}", e.awsErrorDetails().errorMessage());
-            return new ConfirmSignUpResponseDto(null, e.awsErrorDetails().errorMessage());
+            log.error("Failed to sign up user, error: {}", e.awsErrorDetails().errorMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.awsErrorDetails().errorMessage());
         }
     }
 
     public ChangePasswordResponseDto changePassword(ChangePasswordDto changePasswordDto) {
         try {
             ChangePasswordRequest changePasswordRequest = ChangePasswordRequest.builder()
-                    .accessToken(changePasswordDto.getAccessToken())
-                    .previousPassword(changePasswordDto.getOldPassword())
-                    .proposedPassword(changePasswordDto.getNewPassword())
+                    .accessToken(changePasswordDto.accessToken())
+                    .previousPassword(changePasswordDto.oldPassword())
+                    .proposedPassword(changePasswordDto.newPassword())
                     .build();
 
             log.info("User password changed");
-            return new ChangePasswordResponseDto(cognitoIdentityProviderClient.changePassword(changePasswordRequest), null);
+            return new ChangePasswordResponseDto(Optional.ofNullable(cognitoIdentityProviderClient.changePassword(changePasswordRequest)), null);
         } catch (CognitoIdentityProviderException e) {
             log.error("Failed to change user password, error: {}", e.awsErrorDetails().errorMessage());
             return new ChangePasswordResponseDto(null, e.awsErrorDetails().errorMessage());
@@ -125,11 +162,11 @@ public class UserAuthenticationService {
         try {
             ForgotPasswordRequest forgotPasswordRequest = ForgotPasswordRequest.builder()
                     .clientId(CLIENT_ID)
-                    .username(forgotPasswordDto.getEmail())
+                    .username(forgotPasswordDto.email())
                     .build();
 
-            log.info("User {} password restart process started", forgotPasswordDto.getEmail());
-            return new ForgotPasswordResponseDto(cognitoIdentityProviderClient.forgotPassword(forgotPasswordRequest), null);
+            log.info("User {} password restart process started", forgotPasswordDto.email());
+            return new ForgotPasswordResponseDto(Optional.ofNullable(cognitoIdentityProviderClient.forgotPassword(forgotPasswordRequest)), null);
         } catch (CognitoIdentityProviderException e) {
             log.error("Failed to start forgot password process, error: {}", e.awsErrorDetails().errorMessage());
             return new ForgotPasswordResponseDto(null, e.awsErrorDetails().errorMessage());
@@ -140,24 +177,18 @@ public class UserAuthenticationService {
         try {
             ConfirmForgotPasswordRequest confirmForgotPasswordRequest = ConfirmForgotPasswordRequest.builder()
                     .clientId(CLIENT_ID)
-                    .username(confirmForgotPasswordDto.getEmail())
-                    .confirmationCode(confirmForgotPasswordDto.getConfirmationCode())
-                    .password(confirmForgotPasswordDto.getPassword())
+                    .username(confirmForgotPasswordDto.email())
+                    .confirmationCode(confirmForgotPasswordDto.confirmationCode())
+                    .password(confirmForgotPasswordDto.password())
                     .build();
 
-            log.info("User {} password reseted successfully", confirmForgotPasswordDto.getEmail());
-            return new ConfirmForgotPasswordResponseDto(cognitoIdentityProviderClient.confirmForgotPassword(confirmForgotPasswordRequest), null);
+            log.info("User {} password reseted successfully", confirmForgotPasswordDto.email());
+            return new ConfirmForgotPasswordResponseDto(Optional.of(cognitoIdentityProviderClient.confirmForgotPassword(confirmForgotPasswordRequest)), null);
         } catch (CognitoIdentityProviderException e) {
             log.error("Failed to reset user password, error: {}", e.awsErrorDetails().errorMessage());
-            return new ConfirmForgotPasswordResponseDto(null, e.awsErrorDetails().errorMessage());
+            return new ConfirmForgotPasswordResponseDto(Optional.empty(), e.awsErrorDetails().errorMessage());
         }
     }
 
-    public void authorize(AuthorizeDto authorizeDto) {
-        RSAKeyProvider rsaKeyProvider = new AwsCognitoRSAKeyProvider();
-        Algorithm algorithm = Algorithm.RSA256(rsaKeyProvider);
-        JWTVerifier jwtVerifier = JWT.require(algorithm)
-                .build();
-        jwtVerifier.verify(authorizeDto.getToken());
-    }
+
 }
