@@ -1,9 +1,18 @@
 package com.user_service.controllers;
 
-import com.user_service.dtos.request.*;
-import com.user_service.dtos.response.*;
+import com.user_service.dtos.request.ChangePasswordDto;
+import com.user_service.dtos.request.ConfirmForgotPasswordDto;
+import com.user_service.dtos.request.ConfirmSignUpDto;
+import com.user_service.dtos.request.ForgotPasswordDto;
+import com.user_service.dtos.request.SignInUserDto;
+import com.user_service.dtos.request.SignUpUserDto;
+import com.user_service.dtos.response.ChangePasswordResponseDto;
+import com.user_service.dtos.response.ConfirmForgotPasswordResponseDto;
+import com.user_service.dtos.response.ConfirmSignUpResponseDto;
+import com.user_service.dtos.response.ForgotPasswordResponseDto;
+import com.user_service.dtos.response.SignInResponseDto;
+import com.user_service.dtos.response.SignUpResponseDto;
 import com.user_service.services.UserAuthenticationService;
-import com.user_service.services.UserAuthorizationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserAuthenticationController {
 
     private UserAuthenticationService userAuthenticationService;
-
-    private UserAuthorizationService userAuthorizationService;
 
     @PostMapping(value = "/register")
     public ResponseEntity<SignUpResponseDto> signUpUser(@RequestBody SignUpUserDto signUpUserDto) {
@@ -35,37 +42,17 @@ public class UserAuthenticationController {
     }
 
     @PostMapping(value = "/changePassword")
-    public ResponseEntity<String> changePassword(@RequestBody ChangePasswordDto changePasswordDto) {
-        ChangePasswordResponseDto changePasswordResponseDto = userAuthenticationService.changePassword(changePasswordDto);
-
-        if (changePasswordResponseDto.changePasswordResponse() == null) {
-            return new ResponseEntity<>(changePasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Password changed", HttpStatus.OK);
+    public ResponseEntity<ChangePasswordResponseDto> changePassword(@RequestBody ChangePasswordDto changePasswordDto) {
+        return new ResponseEntity<>(userAuthenticationService.changePassword(changePasswordDto), HttpStatus.OK);
     }
 
     @PostMapping(value = "/forgotPassword")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordDto forgotPasswordDto) {
-        ForgotPasswordResponseDto forgotPasswordResponseDto = userAuthenticationService.forgotPassword(forgotPasswordDto);
-
-        if (forgotPasswordResponseDto.forgotPasswordResponse() == null) {
-            return new ResponseEntity<>(forgotPasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Forgot password validation code send on email", HttpStatus.OK);
+    public ResponseEntity<ForgotPasswordResponseDto> forgotPassword(@RequestBody ForgotPasswordDto forgotPasswordDto) {
+        return new ResponseEntity<>(userAuthenticationService.forgotPassword(forgotPasswordDto), HttpStatus.OK);
     }
 
     @PostMapping(value = "/confirmForgotPassword")
-    public ResponseEntity<String> confirmForgotPassword(@RequestBody ConfirmForgotPasswordDto confirmForgotPasswordDto) {
-        ConfirmForgotPasswordResponseDto confirmForgotPasswordResponseDto = userAuthenticationService.confirmForgotPassword(confirmForgotPasswordDto);
-
-        if (confirmForgotPasswordResponseDto.confirmForgotPasswordResponse() == null) {
-            return new ResponseEntity<>(confirmForgotPasswordResponseDto.message(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        return new ResponseEntity<>("Password reseted", HttpStatus.OK);
+    public ResponseEntity<ConfirmForgotPasswordResponseDto> confirmForgotPassword(@RequestBody ConfirmForgotPasswordDto confirmForgotPasswordDto) {
+        return new ResponseEntity<>(userAuthenticationService.confirmForgotPassword(confirmForgotPasswordDto), HttpStatus.OK);
     }
-
-//    @PostMapping(value = "/authorize")
-//    public void authorize(@RequestBody AuthorizeDto authorizeDto) {
-//        userAuthorizationService.authorize(authorizeDto);
-//    }
 }
