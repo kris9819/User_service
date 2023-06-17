@@ -4,5 +4,5 @@ public record SignInResponseDto(String accessToken,
                                 String tokenType,
                                 String refreshToken,
                                 String idToken,
-                                Integer expiresIn) {
+                                Integer expiresInMs) {
 }
