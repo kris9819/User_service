@@ -1,8 +1,6 @@
 package com.user_service.services
 
-
 import com.user_service.controllers.UserAuthorizationController
-import com.user_service.dtos.request.AuthorizeDto
 import com.user_service.dtos.response.AuthorizeResponseDto
 import org.springframework.http.HttpStatus
 import spock.lang.Specification
@@ -18,16 +16,15 @@ class UserAuthorizationServiceTest extends Specification {
     }
 
     def "Should authorize user request"() {
-        given: "AuthorizeDto is provided"
-            AuthorizeDto authorizeDto =
-                    new AuthorizeDto("123")
+        given: "AccessToken is provided"
+            String accessToken = "123"
 
         and: "AuthorizeResponseDto is provided"
             AuthorizeResponseDto authorizeResponseDto =
                     new AuthorizeResponseDto(true)
 
         and: "authorize method is mocked"
-            userAuthorizationService.authorize(authorizeDto) >> authorizeResponseDto
+            userAuthorizationService.authorize(accessToken) >> authorizeResponseDto
 
         when: "authorize method is called"
             def authorizeResponse = userAuthorizationController.authorize(authorizeDto)

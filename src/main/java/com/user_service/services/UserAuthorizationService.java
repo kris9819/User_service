@@ -4,7 +4,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.RSAKeyProvider;
-import com.user_service.dtos.request.AuthorizeDto;
 import com.user_service.dtos.response.AuthorizeResponseDto;
 import com.user_service.utility.ExternalCognitoClient;
 import lombok.AllArgsConstructor;
@@ -24,17 +23,20 @@ public class UserAuthorizationService {
 
     private ExternalCognitoClient externalCognitoClient;
 
-    public AuthorizeResponseDto authorize(AuthorizeDto authorizeDto) {
+    public AuthorizeResponseDto authorize(String accessToken) {
         try {
-            String token = authorizeDto.token();
             Algorithm algorithm = Algorithm.RSA256(rsaKeyProvider);
             JWTVerifier jwtVerifier = JWT.require(algorithm)
                     .build();
-            jwtVerifier.verify(token);
+            jwtVerifier.verify(accessToken);
 
-            Optional<GetUserResponse> response = externalCognitoClient.getUserInfo(token);
+            Optional<GetUserResponse> response = externalCognitoClient.getUserInfo(accessToken);
             if (response.isPresent()) {
-                return new AuthorizeResponseDto(true);
+                GetUserResponse responseValue = response.get();
+                String username = responseValue.username();
+                String name = responseValue.userAttributes().get(3).value();
+                String email = responseValue.userAttributes().get(4).value();
+                return new AuthorizeResponseDto(username, email, name);
             }
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error occurred");
         } catch (CognitoIdentityProviderException e) {
